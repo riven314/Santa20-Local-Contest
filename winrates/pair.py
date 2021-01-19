@@ -2,6 +2,7 @@
 set up N battles between 2 agents, compute overall winrate
 """
 import os
+from random import randint
 from kaggle_environments import make
 
 from winrates.utils import GameOutcome, timeit, get_logger
@@ -24,18 +25,27 @@ def pair_agent_battle(left_agent: str, right_agent: str, battle_n = 100) -> dict
     for n in range(battle_n):
         signature = f'[GAME {n + 1}/{battle_n}]'
         logger.info(f'{signature} game starting')
-        # TODO: needa shuffle left_agent, right_agent between games coz position may have edge 
-        game_stats, game_outcome = _run_one_game(left_agent, right_agent)
+        
+        # optionally shuffle and accumulate winrate
+        is_shuffle = randint(a = 0, b = 1)
+        if is_shuffle:
+            game_stats, game_outcome = _run_one_game(right_agent, left_agent)
+        else:
+            game_stats, game_outcome = _run_one_game(left_agent, right_agent)
+
         if game_outcome == GameOutcome.TIE.value:
             outcome_str = GameOutcome.TIE.name
-        elif game_outcome == GameOutcome.LEFT_WIN.value:
+        elif (game_outcome == GameOutcome.LEFT_WIN.value and not is_shuffle) or (game_outcome == GameOutcome.RIGHT_WIN.value and is_shuffle):
             outcome_str = GameOutcome.LEFT_WIN.name
             left_wins += 1
-        else:
+        elif (game_outcome == GameOutcome.RIGHT_WIN.value and not is_shuffle) or (game_outcome == GameOutcome.LEFT_WIN.value and is_shuffle):
             outcome_str = GameOutcome.RIGHT_WIN.name
             right_wins += 1
+        else:
+            raise Exception('This case shoudnt happen')
+
         stats_dict[n] = game_stats
-        logger.info(f'{signature} outcome: {outcome_str}')
+        logger.info(f'{signature} outcome: {outcome_str} (shuffle: {is_shuffle})')
     
     # compute overall outcome
     left_winrate = left_wins / battle_n
