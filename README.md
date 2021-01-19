@@ -47,3 +47,14 @@ Django leaderboard for Santa 2020, https://www.kaggle.com/c/santa-2020/overview
    ./manage.py run_games -n 100
    ```
 3. You can find your local LB here http://127.0.0.1:8000/admin/app/agent/
+
+### Compute Winrates
+1. Battle between 2 agents
+   ```bash
+   python -m winrates.pair --left_agent {path_to_left_agent_script} --right {path_to_right_agent_scrip} -n 100
+   ```
+
+2. Battle between a pool of agents (placed in `./agent_pools`)
+   ```bash
+   TBD
+   ```
