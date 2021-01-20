@@ -79,7 +79,11 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description = 'battle between a pool of agents')
     parser.add_argument('--agent_dir', type = str, required = True)
+    parser.add_argument('--output_plot', type = str, default = None)
     parser.add_argument('-n', type = int, default = 100)
     args = parser.parse_args()
 
     fig, ax = pool_agent_battle(args.agent_dir, args.n)
+    if args.output_plot is not None:
+        logger.info(f'Winrate matrix plot written: {args.output_plot}')
+        fig.savefig(args.output_plot)
