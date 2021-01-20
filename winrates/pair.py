@@ -20,8 +20,7 @@ def pair_agent_battle(left_agent: str, right_agent: str, battle_n = 100) -> dict
     right_wins = 0
     stats_dict = {}
     logger.info(f'left agent: {left_agent} v.s. right_agent: {right_agent}, battle_n: {battle_n}')
-
-    # TODO: multiprocessing for speedup
+    
     for n in range(battle_n):
         signature = f'[GAME {n + 1}/{battle_n}]'
         logger.info(f'{signature} game starting')

@@ -1,6 +1,5 @@
-# Santa20-Local-Contest
-Django leaderboard for Santa 2020, https://www.kaggle.com/c/santa-2020/overview
-
+# Santa2020 Analysis Tools
+This repo is mainly built upon [Santa20-Local-Contest](https://github.com/w9PcJLyb/Santa20-Local-Contest)
 ### Features:
 
 - Create your own leaderboard with django
@@ -56,5 +55,5 @@ Django leaderboard for Santa 2020, https://www.kaggle.com/c/santa-2020/overview
 
 2. Battle between a pool of agents (placed in `./agent_pools`)
    ```bash
-   TBD
+   python -m winrates.pool --agent_dir {path_to_agent_pool} -n 100
    ```
