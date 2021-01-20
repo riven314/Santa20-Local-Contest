@@ -104,5 +104,6 @@ if __name__ == '__main__':
     parser.add_argument('--right_agent', type = str, required = True)
     parser.add_argument('-n', type = int, default = 100)
     args = parser.parse_args()
+    # hello world
 
     left_winrate, stats_dict = pair_agent_battle(args.left_agent, args.right_agent, args.n)
