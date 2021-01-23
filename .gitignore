@@ -1,8 +1,11 @@
 # added by Alex
+dataset
 .vscode
 uploads
 *.png
 *.jpg
+*.joblib
+*/*.joblib
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

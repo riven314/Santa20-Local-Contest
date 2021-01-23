@@ -40,6 +40,7 @@ def _compute_winrate_matrix(agents, battle_n):
             winrate_mat[i, j] = left_winrate
 
     # complete the whole winrate matrix
+    # TODO @Alex: right winrate != 1 - left winrate (needa account for tie)
     upper_mat = winrate_mat.T.copy()
     np.fill_diagonal(upper_mat, 0.)
     upper_mat = 1 - upper_mat
