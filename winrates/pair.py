@@ -42,7 +42,6 @@ def pair_agent_battle(left_agent: str, right_agent: str, battle_n = 100) -> dict
             right_wins += 1
         else:
             raise Exception('This case shoudnt happen')
-
         stats_dict[n] = game_stats
         logger.info(f'{signature} outcome: {outcome_str} (shuffle: {is_shuffle})')
     
