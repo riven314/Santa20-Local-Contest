@@ -56,12 +56,16 @@ def parse_game(data, n_machines = 100):
     result = data['steps']
     
     # Initialize machine and agent states
-    machine_state = [{'n_pulls_0': 0, 'n_success_0': 0,
-                      'n_pulls_1': 0, 'n_success_1': 0,
-                      'payout': None}
-                     for ii in range(n_machines)]
-    agent_state = {'reward_0': 0, 'reward_1': 0, 'last_reward_0': 0,
-                   'last_reward_1': 0}
+    consec_cache = {agent_i: [] for agent_i in range(2)}
+    machine_state = [{
+            'n_pulls_0': 0, 'n_success_0': 0, 'n_consec2_0': 0, 'n_consec3_0': 0, 'n_consec4_0': 0, 'n_consec5_0': 0,
+            'n_pulls_1': 0, 'n_success_1': 0, 'n_consec2_1': 0, 'n_consec3_1': 0, 'n_consec4_1': 0, 'n_consec5_1': 0,
+            'payout': None
+        } for ii in range(n_machines)]
+    agent_state = {
+        'reward_0': 0, 'reward_1': 0, 
+        'last_reward_0': 0, 'last_reward_1': 0
+    }
 
     # Initialize training dataframe
     # - In the first round, store records for all n_machines
@@ -79,18 +83,34 @@ def parse_game(data, n_machines = 100):
 
         # Update agent state
         for agent_ii in range(2):
-            agent_state['last_reward_%i' % agent_ii] = (
-                res[agent_ii]['reward']
-                - agent_state['reward_%i' % agent_ii])
+            agent_state['last_reward_%i' % agent_ii] = (res[agent_ii]['reward'] - agent_state['reward_%i' % agent_ii])
             agent_state['reward_%i' % agent_ii] = res[agent_ii]['reward']        
 
         # Update most recent machine state
         if res[0]['observation']['lastActions']:
             for agent_ii, r_obs in enumerate(res):
                 action = r_obs['action']
+
+                # check for latest consecutive actions
+                if len(consec_cache[agent_ii]) == 0:
+                    consec_cache[agent_ii] = [action]
+                else:
+                    last_action = consec_cache[agent_ii][-1]
+                    if last_action == action:
+                        consec_cache[agent_ii].append(action)
+                        if len(consec_cache[agent_ii]) == 2:
+                            machine_state[action][f'n_consec2_{agent_ii}'] += 1
+                        elif len(consec_cache[agent_ii]) == 3:
+                            machine_state[action][f'n_consec3_{agent_ii}'] += 1
+                        elif len(consec_cache[agent_ii]) == 4:
+                            machine_state[action][f'n_consec4_{agent_ii}'] += 1
+                        elif len(consec_cache[agent_ii]) == 5:
+                            machine_state[action][f'n_consec5_{agent_ii}'] += 1
+                    else:
+                        consec_cache[agent_ii] = [action]
+
                 machine_state[action]['n_pulls_%i' % agent_ii] += 1
-                machine_state[action]['n_success_%i' % agent_ii] += \
-                    agent_state['last_reward_%i' % agent_ii]
+                machine_state[action]['n_success_%i' % agent_ii] += agent_state['last_reward_%i' % agent_ii]
                 machine_state[action]['payout'] = thresholds[action]
         else:
             # Initialize machine states
@@ -103,6 +123,7 @@ def parse_game(data, n_machines = 100):
         if res[0]['observation']['lastActions']:
             # Add results for most recent moves
             for agent_ii, r_obs in enumerate(res):
+                other_agent = (agent_ii + 1) % 2
                 action = r_obs['action']
 
                 # Add row for agent who acted
@@ -110,30 +131,28 @@ def parse_game(data, n_machines = 100):
                 training_data.at[row_ii, 'round_num'] = round_num
                 training_data.at[row_ii, 'machine_id'] = action
                 training_data.at[row_ii, 'agent_id'] = agent_ii
-                training_data.at[row_ii, 'n_pulls_self'] = (
-                    machine_state[action]['n_pulls_%i' % agent_ii])
-                training_data.at[row_ii, 'n_success_self'] = (
-                    machine_state[action]['n_success_%i' % agent_ii])
-                training_data.at[row_ii, 'n_pulls_opp'] = (
-                    machine_state[action]['n_pulls_%i' % (
-                        (agent_ii + 1) % 2)])
-                training_data.at[row_ii, 'payout'] = (
-                    machine_state[action]['payout'] / 100)
+                training_data.at[row_ii, 'n_pulls_self'] = machine_state[action]['n_pulls_%i' % agent_ii]
+                training_data.at[row_ii, 'n_success_self'] = machine_state[action]['n_success_%i' % agent_ii]
+                training_data.at[row_ii, 'n_pulls_opp'] = machine_state[action]['n_pulls_%i' % other_agent]
+                training_data.at[row_ii, 'n_consec2_opp'] = machine_state[action][f'n_consec2_{other_agent}']
+                training_data.at[row_ii, 'n_consec3_opp'] = machine_state[action][f'n_consec3_{other_agent}']
+                training_data.at[row_ii, 'n_consec4_opp'] = machine_state[action][f'n_consec4_{other_agent}']
+                training_data.at[row_ii, 'n_consec5_opp'] = machine_state[action][f'n_consec5_{other_agent}']
+                training_data.at[row_ii, 'payout'] = (machine_state[action]['payout'] / 100)
 
                 # Add row for other agent
                 row_ii = n_machines + 4 * (round_num - 1) + 2 * agent_ii + 1
-                other_agent = (agent_ii + 1) % 2
                 training_data.at[row_ii, 'round_num'] = round_num
                 training_data.at[row_ii, 'machine_id'] = action
                 training_data.at[row_ii, 'agent_id'] = other_agent
-                training_data.at[row_ii, 'n_pulls_self'] = (
-                    machine_state[action]['n_pulls_%i' % other_agent])
-                training_data.at[row_ii, 'n_success_self'] = (
-                    machine_state[action]['n_success_%i' % other_agent])
-                training_data.at[row_ii, 'n_pulls_opp'] = (
-                    machine_state[action]['n_pulls_%i' % agent_ii])
-                training_data.at[row_ii, 'payout'] = (
-                    machine_state[action]['payout'] / 100)
+                training_data.at[row_ii, 'n_pulls_self'] = (machine_state[action]['n_pulls_%i' % other_agent])
+                training_data.at[row_ii, 'n_success_self'] = (machine_state[action]['n_success_%i' % other_agent])
+                training_data.at[row_ii, 'n_pulls_opp'] = (machine_state[action]['n_pulls_%i' % agent_ii])
+                training_data.at[row_ii, 'n_consec2_opp'] = machine_state[action][f'n_consec2_{agent_ii}']
+                training_data.at[row_ii, 'n_consec3_opp'] = machine_state[action][f'n_consec3_{agent_ii}']
+                training_data.at[row_ii, 'n_consec4_opp'] = machine_state[action][f'n_consec4_{agent_ii}']
+                training_data.at[row_ii, 'n_consec5_opp'] = machine_state[action][f'n_consec5_{agent_ii}']
+                training_data.at[row_ii, 'payout'] = (machine_state[action]['payout'] / 100)
                 
         else:
             # Add initial data for all machines
@@ -145,8 +164,7 @@ def parse_game(data, n_machines = 100):
                 training_data.at[row_ii, 'n_pulls_self'] = 0
                 training_data.at[row_ii, 'n_success_self'] = 0
                 training_data.at[row_ii, 'n_pulls_opp'] = 0
-                training_data.at[row_ii, 'payout'] = (
-                    machine_state[action]['payout'] / 100)
+                training_data.at[row_ii, 'payout'] = (machine_state[action]['payout'] / 100)
             
     return training_data
 
@@ -162,4 +180,4 @@ if __name__ == '__main__':
             raise Exception('contain incomplete games')
     
     agg_df = aggregate_games(data_dir, stop_n = 100)
-    agg_df.to_csv('100_games.csv', index = False)
+    agg_df.to_csv('100_games_wconsec.csv', index = False)
