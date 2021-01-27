@@ -31,7 +31,8 @@ def get_next_bandit():
         if expect > best_bandit_expected:
             best_bandit_expected = expect
     
-    unvisited_bandits = (bandit_visited == False).nonzero()[0]
+    cp_bandit_visited = np.array(bandit_visited)
+    unvisited_bandits = (cp_bandit_visited == False).nonzero()[0]
     best_bandits = (bandit_expect == best_bandit_expected).nonzero()[0]
     intersect_bandits = np.intersect1d(unvisited_bandits, best_bandits)
     if len(intersect_bandits) != 0:
@@ -42,7 +43,7 @@ def get_next_bandit():
         candidate_bandits = list(best_bandits)
 
     my_bandit = sample(candidate_bandits, 1)[0]
-    return my_bandit
+    return int(my_bandit)
 
 
 def multi_armed_probabilities(observation, configuration):
@@ -60,8 +61,11 @@ def multi_armed_probabilities(observation, configuration):
         total_reward = observation['reward']
         
         my_idx = observation['agentIndex']
+        opp_idx = 1 - my_idx
         my_last_pull = observation['lastActions'][my_idx]
+        opp_last_pull = observation['lastActions'][opp_idx]
         bandit_visited[my_last_pull] = True
+        bandit_visited[opp_last_pull] = True
 
         if last_reward > 0:
             bandit_dict[observation['lastActions'][my_idx]]['win'] = bandit_dict[observation['lastActions'][my_idx]]['win'] + 1

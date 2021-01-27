@@ -19,7 +19,7 @@ def set_seed(my_seed = 42):
     np.random.seed(my_seed)
 
 
-def pull_vegas_action(history):
+def pull_vegas_action(history, explore_first = False):
     # all array has a size of (machine_n, )
     self_pull = np.nansum(history[:, SELF_PULL_INDEX, :], axis = -1)
     opp_pull = np.nansum(history[:, OPP_PULL_INDEX, :], axis = -1)
@@ -28,11 +28,35 @@ def pull_vegas_action(history):
     total_pull = self_pull + opp_pull 
     # compute pull vegas score
     scores = (1. + self_win - self_loss + opp_pull - (opp_pull > 0)*1.5) / (1. + total_pull)
+
     # make decision
-    #ranked_bandits = np.argsort(scores)[::-1]
-    #my_pull = ranked_bandits[0]
-    my_pull = np.argmax(scores)
+    if not explore_first:
+        my_pull = np.argmax(scores)
+    else:
+        best_score = scores.max()
+        best_pulls = (scores == best_score).nonzero()[0]
+        total_pulls = np.nansum(history[:, [SELF_PULL_INDEX, OPP_PULL_INDEX], :], axis = (1, 2))
+        unvisited_pulls = (total_pulls == 0.).nonzero()[0]
+        assert len(total_pulls) == MACHINE_N
+        intersect_pulls = np.intersect1d(best_pulls, unvisited_pulls)
+        if len(intersect_pulls) != 0:
+            candidate_pulls = list(intersect_pulls)
+        else:
+            candidate_pulls = list(best_pulls)
+        my_pull = random.sample(candidate_pulls, 1)[0]
+
     return int(my_pull)
+
+
+def pull_with_consec_k(history, t, k, is_opp = True):
+    target_idx = OPP_PULL_INDEX if is_opp else SELF_PULL_INDEX
+    start_t = t - k + 1
+    end_t = t + 1
+    # (machine_n, )
+    consec_sum_pulls = np.nansum(history[:, target_idx, start_t:end_t], axis = -1)
+    target_pulls = (consec_sum_pulls == k).nonzero()[0]
+    target_pull = None if len(target_pulls) == 0. else int(list(target_pulls)[0])
+    return target_pull
 
 
 def _update_history(history, observation, t):
@@ -61,9 +85,14 @@ def strategy(observation, configuration):
         set_seed()
         my_pull = random.randrange(configuration['banditCount'])    
         history[:, :, t] = 0.
+        
     else:
         history = _update_history(history, observation, t)
-        my_pull = pull_vegas_action(history)
+        opp_consec_pull = pull_with_consec_k(history, t, k = 2, is_opp = True)
+        if opp_consec_pull is not None:
+            my_pull = opp_consec_pull
+        else:
+            my_pull = pull_vegas_action(history, explore_first = True)
     
     return my_pull
     
