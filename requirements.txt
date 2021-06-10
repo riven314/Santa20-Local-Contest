@@ -1,4 +1,4 @@
-django==3.1.4
+django==3.1.12
 django-ndarray==0.0.3
 kaggle_environments==1.7.3
 requests==2.25.0
